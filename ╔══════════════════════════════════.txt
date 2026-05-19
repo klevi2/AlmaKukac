@@ -1,0 +1,800 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║        PACKET TRACER HÁLÓZAT - TELJES LÉPÉSRŐL-LÉPÉSRE MAGYAR ÚTMUTATÓ      ║
+║                         Széchenyi István Baptista Technikum                   ║
+║                              Tapolca 2025                                     ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+═════════════════════════════════════════════════════════════════════════════════
+ELŐKÉSZÍTÉS
+═════════════════════════════════════════════════════════════════════════════════
+
+1. Nyisd meg a Packet Tracert
+2. Hozz létre egy új projektfájlt (File -> New)
+3. Épít fel a topológiát az alábbi eszközökkel:
+   - 2x Switch 2960 (SW01, SW02)
+   - 2x Router 2901 (SZISZI_A, SZISZI_B)
+   - 1x Router HomeRouter-PT_AC (Sziszi wifi)
+   - 1x PC
+   - 1x Laptop
+   - 1x Cloud (ISP)
+   - Optionális: Cisco 3650 switch az ISP-hez
+
+═════════════════════════════════════════════════════════════════════════════════
+1. FÁZIS: SW01 (SWITCH) KONFIGURÁLÁSA
+═════════════════════════════════════════════════════════════════════════════════
+
+STEP 1.1 - SW01 eszköz kijelölése
+────────────────────────────────
+1. Kattints az SW01 switch-re a canvason
+2. Megnyílnak az eszköz opcióik
+
+STEP 1.2 - CLI elérés
+────────────────────────────────
+1. Billentyűzet: Y (yes) - hogy CLI-t akarsz
+2. VAGY: Kattints a "CLI" fülre az alul megnyílt ablakban
+
+STEP 1.3 - Bejelentkezés
+────────────────────────────────
+User Access Verification
+Password: [üres, csak Enter]
+
+STEP 1.4 - Privileged módba lépés
+────────────────────────────────
+> enable
+> configure terminal
+
+STEP 1.5 - Hostname beállítása
+────────────────────────────────
+(config)# hostname SW01
+
+STEP 1.6 - VLAN 10 létrehozása
+────────────────────────────────
+(config)# vlan 10
+(config-vlan)# name IRODA
+(config-vlan)# exit
+
+STEP 1.7 - VLAN 20 létrehozása
+────────────────────────────────
+(config)# vlan 20
+(config-vlan)# name TANTEREM
+(config-vlan)# exit
+
+STEP 1.8 - FastEthernet 0/0-10 portok VLAN 10-hez (IRODA)
+────────────────────────────────
+(config)# interface range FastEthernet 0/0-10
+(config-if-range)# switchport mode access
+(config-if-range)# switchport access vlan 10
+(config-if-range)# exit
+
+STEP 1.9 - FastEthernet 0/11 port VLAN 20-hoz (TANTEREM)
+────────────────────────────────
+(config)# interface range FastEthernet 0/11
+(config-if-range)# switchport mode access
+(config-if-range)# switchport access vlan 20
+(config-if-range)# exit
+
+STEP 1.10 - FastEthernet 0/24 port VLAN 10-hez (routerhez csatlakozik!)
+────────────────────────────────
+(config)# interface FastEthernet 0/24
+(config-if)# switchport mode access
+(config-if)# switchport access vlan 10
+(config-if)# exit
+
+STEP 1.11 - EtherChannel beállítás (Fa0/12-14, trunk módban)
+────────────────────────────────
+(config)# interface range FastEthernet 0/12-14
+(config-if-range)# switchport mode trunk
+(config-if-range)# switchport trunk allowed vlan 10,20
+(config-if-range)# channel-group 1 mode active
+(config-if-range)# exit
+
+STEP 1.12 - VLAN 10 Management Interface (SVI)
+────────────────────────────────
+(config)# interface vlan 10
+(config-if)# ip address 192.168.41.2 255.255.255.128
+(config-if)# no shutdown
+(config-if)# exit
+
+STEP 1.13 - SSH hozzáférés beállítása
+────────────────────────────────
+(config)# ip domain-name sziszi.local
+
+(config)# crypto key generate rsa
+   ↳ Az ablakban válassz 1024 bitet (default)
+   ↳ Enter
+
+STEP 1.14 - SSH felhasználó létrehozása
+────────────────────────────────
+(config)# username admin privilege 15 secret Sziszipww
+
+STEP 1.15 - VTY sorok konfigurálása SSH-hoz
+────────────────────────────────
+(config)# line vty 0 4
+(config-line)# transport input ssh
+(config-line)# login local
+(config-line)# exit
+
+STEP 1.16 - SSH verzió 2-re állítása
+────────────────────────────────
+(config)# ip ssh version 2
+
+STEP 1.17 - Konfiguráció mentése
+────────────────────────────────
+(config)# end
+> write memory
+   vagy
+> copy running-config startup-config
+
+✓ SW01 KONFIGURÁLÁSA KÉSZ!
+
+
+═════════════════════════════════════════════════════════════════════════════════
+2. FÁZIS: SW02 (SWITCH) KONFIGURÁLÁSA
+═════════════════════════════════════════════════════════════════════════════════
+
+STEP 2.1 - SW02 eszköz kijelölése
+────────────────────────────────
+1. Kattints az SW02 switch-re a canvason
+2. Képernyő alján megnyílnak az opcióik
+
+STEP 2.2 - CLI elérés
+────────────────────────────────
+1. Billentyűzet: Y (yes)
+2. VAGY: CLI fül
+
+STEP 2.3 - Bejelentkezés
+────────────────────────────────
+> enable
+> configure terminal
+
+STEP 2.4 - Hostname
+────────────────────────────────
+(config)# hostname SW02
+
+STEP 2.5 - VLAN 10 és 20 létrehozása
+────────────────────────────────
+(config)# vlan 10
+(config-vlan)# name IRODA
+(config-vlan)# exit
+
+(config)# vlan 20
+(config-vlan)# name TANTEREM
+(config-vlan)# exit
+
+STEP 2.6 - FastEthernet 0/0-10 VLAN 10-hez
+────────────────────────────────
+(config)# interface range FastEthernet 0/0-10
+(config-if-range)# switchport mode access
+(config-if-range)# switchport access vlan 10
+(config-if-range)# exit
+
+STEP 2.7 - FastEthernet 0/11 VLAN 20-hoz
+────────────────────────────────
+(config)# interface range FastEthernet 0/11
+(config-if-range)# switchport mode access
+(config-if-range)# switchport access vlan 20
+(config-if-range)# exit
+
+STEP 2.8 - EtherChannel (Fa0/12-14, trunk, SW01-hez)
+────────────────────────────────
+(config)# interface range FastEthernet 0/12-14
+(config-if-range)# switchport mode trunk
+(config-if-range)# switchport trunk allowed vlan 10,20
+(config-if-range)# channel-group 1 mode active
+(config-if-range)# exit
+
+STEP 2.9 - FastEthernet 0/24 trunk port (SZISZI_B routerhez)
+────────────────────────────────
+(config)# interface FastEthernet 0/24
+(config-if)# switchport mode trunk
+(config-if)# switchport trunk allowed vlan 10,20
+(config-if)# no shutdown
+(config-if)# exit
+
+STEP 2.10 - Management SVI VLAN 10
+────────────────────────────────
+(config)# interface vlan 10
+(config-if)# ip address 192.168.41.3 255.255.255.128
+(config-if)# no shutdown
+(config-if)# exit
+
+STEP 2.11 - SSH domain név
+────────────────────────────────
+(config)# ip domain-name sziszi.local
+
+STEP 2.12 - RSA kulcs generálása
+────────────────────────────────
+(config)# crypto key generate rsa
+   ↳ 1024 bit
+   ↳ Enter
+
+STEP 2.13 - SSH felhasználó
+────────────────────────────────
+(config)# username admin privilege 15 secret Sziszipww
+
+STEP 2.14 - VTY SSH beállítása
+────────────────────────────────
+(config)# line vty 0 4
+(config-line)# transport input ssh
+(config-line)# login local
+(config-line)# exit
+
+STEP 2.15 - SSH verzió 2
+────────────────────────────────
+(config)# ip ssh version 2
+
+STEP 2.16 - Mentés
+────────────────────────────────
+(config)# end
+> write memory
+
+✓ SW02 KONFIGURÁLÁSA KÉSZ!
+
+
+═════════════════════════════════════════════════════════════════════════════════
+3. FÁZIS: SZISZI_B ROUTER KONFIGURÁLÁSA
+═════════════════════════════════════════════════════════════════════════════════
+
+STEP 3.1 - SZISZI_B router kijelölése
+────────────────────────────────
+1. Kattints a SZISZI_B routerre
+2. CLI fül vagy Y
+
+STEP 3.2 - Bejelentkezés és privileged mode
+────────────────────────────────
+> enable
+> configure terminal
+
+STEP 3.3 - Hostname
+────────────────────────────────
+(config)# hostname SZISZI_B
+
+STEP 3.4 - Serial 0/1/0 interfész (SZISZI_A-hoz, 10.10.11.2 /30)
+────────────────────────────────
+(config)# interface Serial 0/1/0
+(config-if)# ip address 10.10.11.2 255.255.255.252
+(config-if)# clock rate 128000
+(config-if)# no shutdown
+(config-if)# exit
+
+STEP 3.5 - GigabitEthernet 0/0/0 interfész bekapcsolása
+────────────────────────────────
+(config)# interface GigabitEthernet 0/0/0
+(config-if)# no shutdown
+(config-if)# exit
+
+STEP 3.6 - VLAN 10 sub-interfész (192.168.41.1 /25)
+────────────────────────────────
+(config)# interface GigabitEthernet 0/0/0.10
+(config-subif)# encapsulation dot1Q 10
+(config-subif)# ip address 192.168.41.1 255.255.255.128
+(config-subif)# no shutdown
+(config-subif)# exit
+
+STEP 3.7 - VLAN 20 sub-interfész (192.168.41.129 /25)
+────────────────────────────────
+(config)# interface GigabitEthernet 0/0/0.20
+(config-subif)# encapsulation dot1Q 20
+(config-subif)# ip address 192.168.41.129 255.255.255.128
+(config-subif)# no shutdown
+(config-subif)# exit
+
+STEP 3.8 - DHCP Pool LAN10 (192.168.41.0/25)
+────────────────────────────────
+(config)# ip dhcp excluded-address 192.168.41.1 192.168.41.10
+
+(config)# ip dhcp pool LAN10
+(dhcp-config)# network 192.168.41.0 255.255.255.128
+(dhcp-config)# default-router 192.168.41.1
+(dhcp-config)# dns-server 8.8.8.8
+(dhcp-config)# exit
+
+STEP 3.9 - DHCP Pool LAN20 (192.168.41.128/25)
+────────────────────────────────
+(config)# ip dhcp excluded-address 192.168.41.129 192.168.41.131
+
+(config)# ip dhcp pool LAN20
+(dhcp-config)# network 192.168.41.128 255.255.255.128
+(dhcp-config)# default-router 192.168.41.129
+(dhcp-config)# dns-server 8.8.8.8
+(dhcp-config)# exit
+
+STEP 3.10 - SSH beállítások
+────────────────────────────────
+(config)# ip domain-name sziszi.local
+
+(config)# crypto key generate rsa
+   ↳ 1024 bit
+   ↳ Enter
+
+(config)# username admin privilege 15 secret Sziszipww
+
+(config)# line vty 0 4
+(config-line)# transport input ssh
+(config-line)# login local
+(config-line)# exit
+
+(config)# ip ssh version 2
+
+STEP 3.11 - OSPF Routing (Process 1, Area 0)
+────────────────────────────────
+(config)# router ospf 1
+(config-router)# network 10.10.11.0 0.0.0.3 area 0
+(config-router)# network 192.168.41.0 0.0.0.127 area 0
+(config-router)# network 192.168.41.128 0.0.0.127 area 0
+(config-router)# exit
+
+STEP 3.12 - Mentés
+────────────────────────────────
+(config)# end
+> write memory
+
+✓ SZISZI_B KONFIGURÁLÁSA KÉSZ!
+
+
+═════════════════════════════════════════════════════════════════════════════════
+4. FÁZIS: SZISZI_A ROUTER KONFIGURÁLÁSA
+═════════════════════════════════════════════════════════════════════════════════
+
+STEP 4.1 - SZISZI_A router kijelölése
+────────────────────────────────
+1. Kattints a SZISZI_A routerre
+2. CLI
+
+STEP 4.2 - Bejelentkezés
+────────────────────────────────
+> enable
+> configure terminal
+
+STEP 4.3 - Hostname
+────────────────────────────────
+(config)# hostname SZISZI_A
+
+STEP 4.4 - Serial 0/1/0 interfész (SZISZI_B-hez, 10.10.11.1 /30)
+────────────────────────────────
+(config)# interface Serial 0/1/0
+(config-if)# ip address 10.10.11.1 255.255.255.252
+(config-if)# no shutdown
+(config-if)# exit
+
+STEP 4.5 - GigabitEthernet 0/0/0 interfész (192.168.21.1 /29)
+────────────────────────────────
+(config)# interface GigabitEthernet 0/0/0
+(config-if)# ip address 192.168.21.1 255.255.255.248
+(config-if)# no shutdown
+(config-if)# exit
+
+STEP 4.6 - GigabitEthernet 0/0/1 interfész (192.168.100.11 /25, ISP felé)
+────────────────────────────────
+(config)# interface GigabitEthernet 0/0/1
+(config-if)# ip address 192.168.100.11 255.255.255.128
+(config-if)# no shutdown
+(config-if)# exit
+
+STEP 4.7 - Default route (internet felé)
+────────────────────────────────
+(config)# ip route 0.0.0.0 0.0.0.0 192.168.100.1
+
+STEP 4.8 - SSH konfigurálás
+────────────────────────────────
+(config)# ip domain-name sziszi.local
+
+(config)# crypto key generate rsa
+   ↳ 1024 bit
+   ↳ Enter
+
+(config)# username admin privilege 15 secret Sziszipww
+
+(config)# line vty 0 4
+(config-line)# transport input ssh
+(config-line)# login local
+(config-line)# exit
+
+(config)# ip ssh version 2
+
+STEP 4.9 - ACL www.badacsony.hu blokkolásához
+────────────────────────────────
+(config)# access-list 100 deny tcp any any eq www
+(config)# access-list 100 deny tcp any any eq 443
+(config)# access-list 100 permit ip any any
+
+MEGJEGYZÉS: Ez egy egyszerű ACL. A gyakorlatban hostname-alapú szűréshez 
+szükségelne egy DNS proxy vagy deeper packet inspection.
+
+STEP 4.10 - OSPF Routing (Process 1, Area 0)
+────────────────────────────────
+(config)# router ospf 1
+(config-router)# network 10.10.11.0 0.0.0.3 area 0
+(config-router)# default-information originate
+(config-router)# exit
+
+STEP 4.11 - Mentés
+────────────────────────────────
+(config)# end
+> write memory
+
+✓ SZISZI_A KONFIGURÁLÁSA KÉSZ!
+
+
+═════════════════════════════════════════════════════════════════════════════════
+5. FÁZIS: SZISZI WIFI ROUTER KONFIGURÁLÁSA
+═════════════════════════════════════════════════════════════════════════════════
+
+STEP 5.1 - HomeRouter-PT_AC (Sziszi wifi) kijelölése
+────────────────────────────────
+1. Kattints a wifi routerre
+2. CLI fül
+
+STEP 5.2 - Bejelentkezés
+────────────────────────────────
+> enable
+> configure terminal
+
+STEP 5.3 - Hostname
+────────────────────────────────
+(config)# hostname Sziszi_wifi
+
+STEP 5.4 - Wireless interfész (Gi0, LAN - 192.168.50.1 /24)
+────────────────────────────────
+(config)# interface GigabitEthernet 0
+(config-if)# ip address 192.168.50.1 255.255.255.0
+(config-if)# no shutdown
+(config-if)# exit
+
+STEP 5.5 - Internet interfész (Gi1, WAN - 192.168.21.5 /29)
+────────────────────────────────
+(config)# interface GigabitEthernet 1
+(config-if)# ip address 192.168.21.5 255.255.255.248
+(config-if)# no shutdown
+(config-if)# exit
+
+STEP 5.6 - Default route (SZISZI_A irányába)
+────────────────────────────────
+(config)# ip route 0.0.0.0 0.0.0.0 192.168.21.1
+
+STEP 5.7 - DHCP Pool konfigurálása (utolsó 100 cím: .156 - .255)
+────────────────────────────────
+(config)# ip dhcp excluded-address 192.168.50.1 192.168.50.155
+
+(config)# ip dhcp pool WiFi
+(dhcp-config)# network 192.168.50.0 255.255.255.0
+(dhcp-config)# default-router 192.168.50.1
+(dhcp-config)# dns-server 8.8.8.8
+(dhcp-config)# lease 1440
+(dhcp-config)# exit
+
+STEP 5.8 - Wireless SSID deklarálása
+────────────────────────────────
+(config)# dot11 ssid Sziszi_1
+(config-ssid)# exit
+
+STEP 5.9 - Wireless rádió konfiguráció
+────────────────────────────────
+(config)# interface Dot11Radio 0
+(config-if)# ssid Sziszi_1
+
+! WPA2-PSK beállítása
+(config-if)# security mode wpa
+(config-if)# wpa-psk ascii 0 2025Sziszi
+(config-if)# encryption mode ccmp
+(config-if)# no shutdown
+(config-if)# exit
+
+STEP 5.10 - Mentés
+────────────────────────────────
+(config)# end
+> write memory
+
+✓ SZISZI WIFI KONFIGURÁLÁSA KÉSZ!
+
+
+═════════════════════════════════════════════════════════════════════════════════
+6. FÁZIS: PC1 ÉS LAPTOP KONFIGURÁLÁSA
+═════════════════════════════════════════════════════════════════════════════════
+
+PC1 KONFIGURÁLÁSA:
+────────────────────────────────
+1. Kattints a PC-re a topológiában
+2. Desktop fül
+3. IP Configuration ikon
+4. DHCP bekapcsolása (lenyíló menü: DHCP)
+5. Az IP címet automatikusan kapja: 192.168.41.x (VLAN 10 poolból)
+
+ELLENŐRZÉS: Az IP 192.168.41.11 - 192.168.41.126 közötti legyen (excluded: .1-.10)
+
+────────────────────────────────
+LAPTOP KONFIGURÁLÁSA:
+────────────────────────────────
+1. Kattints a Laptopra
+2. Desktop fül
+3. IP Configuration
+4. DHCP bekapcsolása
+5. Az IP címet automatikusan kapja: 192.168.41.129 - 192.168.41.254 (VLAN 20 poolból)
+
+ELLENŐRZÉS: Az IP 192.168.41.132 - 192.168.41.254 közötti legyen (excluded: .129-.131)
+
+────────────────────────────────
+TABLET PC (Wifi kliens) KONFIGURÁLÁSA:
+────────────────────────────────
+1. Kattints a TabletPC-re
+2. Desktop fül
+3. Wireless Network Connection (vagy PC Wireless)
+4. Refresh / Connect to Network
+5. Keress rá a "Sziszi_1" SSID-re
+6. Jelszó: 2025Sziszi
+7. IP Configuration: DHCP
+8. Az IP címet kapja: 192.168.50.156 - 192.168.50.255 közül
+
+✓ VÉGESZKÖZÖK KONFIGURÁLÁSA KÉSZ!
+
+
+═════════════════════════════════════════════════════════════════════════════════
+7. FÁZIS: TESZTELÉS ÉS ELLENŐRZÉS
+═════════════════════════════════════════════════════════════════════════════════
+
+PING TESZTEK - PC1-ről (192.168.41.x):
+────────────────────────────────
+
+1. PC1-re kattints
+2. Desktop -> Command Prompt
+
+3. Tesztek:
+   C:\> ping 192.168.41.1         [SZISZI_B VLAN10 gateway]
+   C:\> ping 192.168.41.3         [SW02 management]
+   C:\> ping 10.10.11.1           [SZISZI_A Serial port]
+   C:\> ping 192.168.100.11       [SZISZI_A Internet port]
+   C:\> ping 192.168.41.129       [SZISZI_B VLAN20 gateway]
+
+   ✓ Ezek mindegyike sikeres legyen (zöld pipák)
+
+────────────────────────────────
+DHCP ELLENŐRZÉS - SZISZI_B routeren:
+────────────────────────────────
+
+1. SZISZI_B routerben
+2. CLI
+3. Privileged mode: > enable
+
+4. Parancsok:
+   > show ip dhcp binding        [Kiosztott IP-k listája]
+   > show ip dhcp pool           [Pool konfigurálása]
+   > show ip route ospf          [OSPF útvonalak]
+
+────────────────────────────────
+OSPF ELLENŐRZÉS:
+────────────────────────────────
+
+SZISZI_B routeren:
+   > show ip ospf neighbor       [Szomszédok, pl. SZISZI_A]
+   > show ip ospf database       [OSPF adatbázis]
+   > show ip route               [Összes útvonal]
+
+SZISZI_A routeren:
+   > show ip ospf neighbor       [SZISZI_B-t kell mutatni]
+   > show ip route               [Default routot kell mutatni]
+
+────────────────────────────────
+SSH TESZT (ha lehetséges):
+────────────────────────────────
+
+1. Egy PC-n Telnet kliens (vagy SSH kliens)
+2. Kattints: Serial/SSH ikon
+3. Cím: 192.168.41.2 (SW01)
+4. Jelszó: Sziszipww
+
+   Sikeres SSH bejelentkezés jelzi: "#" prompt
+
+────────────────────────────────
+VLAN ELLENŐRZÉS - SW01 / SW02:
+────────────────────────────────
+
+SW01 CLI:
+   > show vlan brief             [VLAN lista: 10 IRODA, 20 TANTEREM]
+   > show interfaces switchport  [Port mód, VLAN tagsági]
+   > show etherchannel summary   [EtherChannel status]
+
+────────────────────────────────
+LAPTOPRÓL (VLAN 20):
+────────────────────────────────
+
+1. Laptopon: Desktop -> Command Prompt
+   C:\> ping 192.168.41.129      [Sziszi_B VLAN20 gateway]
+   C:\> ping 192.168.41.1        [Sziszi_B VLAN10 - routing teszth!]
+   C:\> ping 192.168.41.100      [PC1-et - VLAN 10-ben van1]
+
+   Ha ez utolsó sikeres -> a VLAN közötti routing működik ✓
+
+────────────────────────────────
+WIFI TESZT:
+────────────────────────────────
+
+1. TabletPC: Wireless hálózatok keresése
+2. Csatlakozás: Sziszi_1
+3. Jelszó: 2025Sziszi
+4. IP Configuration automatikusan 192.168.50.156 - .255 közül
+5. Ping tesztek:
+   C:\> ping 192.168.50.1        [Sziszi wifi gateway]
+   C:\> ping 192.168.21.1        [SZISZI_A ISP interfész]
+
+✓ TESZTELÉS KÉSZ!
+
+
+═════════════════════════════════════════════════════════════════════════════════
+8. FÁZIS: KÉPERNYŐFOTÓK KÉSZÍTÉSE (SCREENSHOT-ok)
+═════════════════════════════════════════════════════════════════════════════════
+
+SZÜKSÉGES KÉPERNYŐFOTÓK:
+────────────────────────────────
+
+1. SZISZI_A futó konfiguráció:
+   > show running-config
+   PrintScreen (atau: File -> Print Screen)
+   → FILE: "01_SZISZI_A_futokonfiguracio.png"
+
+2. SZISZI_B futó konfiguráció:
+   > show running-config
+   → FILE: "02_SZISZI_B_futokonfiguracio.png"
+
+3. SW01 futó konfiguráció:
+   > show running-config
+   → FILE: "03_SW01_futokonfiguracio.png"
+
+4. SW02 futó konfiguráció:
+   > show running-config
+   → FILE: "04_SW02_futokonfiguracio.png"
+
+5. PC1 ping teszt (SZISZI_A-hoz):
+   C:\> ping 10.10.11.1
+   C:\> ping 192.168.100.11
+   → FILE: "05_PC1_ping_SZISZIA.png"
+
+6. Laptop ping teszt (inter-VLAN):
+   C:\> ping 192.168.41.1
+   C:\> ping 192.168.41.100
+   → FILE: "06_Laptop_ping_interVLAN.png"
+
+7. SZISZI_B DHCP binding:
+   > show ip dhcp binding
+   → FILE: "07_SZISZI_B_DHCP_binding.png"
+
+8. OSPF szomszédaság:
+   > show ip ospf neighbor
+   → FILE: "08_OSPF_szomszeds.png"
+
+9. Topológia diagram (Packet Tracer File -> Print)
+   → FILE: "09_Topologia_diagram.png"
+
+────────────────────────────────
+KÉPERNYŐFOTÓK BEILLESZTÉSE WORD-BE:
+────────────────────────────────
+
+1. Word megnyitása: Microsoft Word
+2. Üres dokumentum
+3. Insert -> Pictures (Pictures from this device)
+4. Válassz egy screenshoot-ot
+5. Beillesztheted a képet
+6. Alatta: beszúrsz egy szöveget (lábléc): pl. "1. SZISZI_A futó konfiguráció"
+7. Minden képhez hasonlóan teszel
+8. Alulra: Tesztelés Összefoglalása:
+   - PC1 sikeresen pingelt SZISZI_A-t: ✓
+   - Laptop sikeresen pingelt PC1-et: ✓
+   - DHCP működik mindkét VLAN-ban: ✓
+   - OSPF szomszédaság létrejött: ✓
+   - EtherChannel aktív: ✓
+
+9. Fájl mentése:
+   File -> Save As
+   Fájlnév: "Hálózat_[sajátnév].docx"
+   Helyzet: Asztal (Desktop)
+
+✓ DOKUMENTÁCIÓ KÉSZ!
+
+
+═════════════════════════════════════════════════════════════════════════════════
+9. GYORS REFERENCIA - LEGFONTOSABB PARANCSOK
+═════════════════════════════════════════════════════════════════════════════════
+
+NÉZEGETŐ (SHOW) parancsok:
+────────────────────────────────
+show running-config              - Futó konfiguráció
+show startup-config              - Indítási konfiguráció
+show ip interface brief           - Interfészek összefoglalása
+show ip route                     - Routing táblázat
+show ip ospf neighbor             - OSPF szomszédok
+show vlan brief                   - VLAN-ok (switch)
+show interfaces switchport        - Switch portok (switch)
+show etherchannel summary         - EtherChannel status
+show ip dhcp binding              - DHCP kiosztások
+show ip dhcp pool                 - DHCP pool-ok
+
+RESET / LÉPÉSVÁLTÁS parancsok:
+────────────────────────────────
+enable                            - Privileged mode
+configure terminal               - Konfigurációs mód
+exit                             - Lépcsővel feljebb menés
+interface [név]                  - Interface kijelölése
+end                              - Konfig módból kilépés
+
+SZOKÁSOS SORREND:
+────────────────────────────────
+1. > enable
+2. > configure terminal
+3. (config)# [parancsok...]
+4. (config)# end
+5. > write memory (vagy: copy running-config startup-config)
+
+═════════════════════════════════════════════════════════════════════════════════
+10. HIBAELHÁRÍTÁSI TIPPEK
+═════════════════════════════════════════════════════════════════════════════════
+
+PROBLÉMA: PC1 nem kap DHCP IP-t
+────────────────────────────────
+Megoldás:
+1. Ellenőrizd, hogy PC1 az VLAN 10-ben van-e
+2. Ellenőrizd: show ip dhcp pool (SZISZI_B-ben)
+3. Ellenőrizd az IP dhcp excluded-address sorokat
+4. PC IP Configuration: Refresh
+
+PROBLÉMA: Nem pingelhető egyik eszköz sem
+────────────────────────────────
+Megoldás:
+1. Ellenőrizd az interfészek IP címeit: show ip interface brief
+2. Ellenőrizd az interfészek státusza: show ip interface [név]
+3. Ellenőrizd a routing táblázatot: show ip route
+4. Ellenőrizd a kapcsolódást (kábel zöld/piros?)
+
+PROBLÉMA: OSPF szomszédok nem jelennek meg
+────────────────────────────────
+Megoldás:
+1. Ellenőrizd a Serial port konfigurációját
+2. Ellenőrizd az OSPF network parancsokat
+3. Ellenőrizd: show ip ospf database
+4. Reboot a routerek: reload
+
+PROBLÉMA: EtherChannel inaktív
+────────────────────────────────
+Megoldás:
+1. Ellenőrizd az interface range parancsokat
+2. Ellenőrizd: show etherchannel summary
+3. Törölj és újra hozz létre: no channel-group 1
+4. Mindkét swichtben azonos legyen!
+
+PROBLÉMA: SSH nem működik
+────────────────────────────────
+Megoldás:
+1. Ellenőrizd: ip domain-name
+2. Ellenőrizd: crypto key generate rsa
+3. Ellenőrizd: username admin privilege 15 secret Sziszipww
+4. Ellenőrizd: line vty 0 4 -> transport input ssh
+5. Ellenőrizd: ip ssh version 2
+
+═════════════════════════════════════════════════════════════════════════════════
+11. GYAKORLATI TIPPEK - HATÉKONY MUNKA
+═════════════════════════════════════════════════════════════════════════════════
+
+✓ CTRL+A - Összes szöveg kijelölése (copy-paste-hez jó)
+✓ Jobb klikk -> Paste - Parancsok beillesztése
+✓ ? - Parancs autokomplett (tab)
+✓ no [parancs] - Parancs visszavonása
+✓ Ctrl+C - Parancs szakítása (pl. "show running-config"-ot megállítani)
+
+COPY-PASTE TIPPEK:
+────────────────────────────────
+1. Másolj egy teljes konfig blokkot (pl. interface range parancsok)
+2. A CLI-ben kattints jobb klikkel -> Paste
+3. Az összes parancs automatikusan végigfut
+
+GYORSÍTÁS:
+────────────────────────────────
+- Switcheket azonos módon konfiguráld, csak az IP-k legyenek mások
+- VTY / SSH beállítások mindenhol azonosak
+- OSPF network parancsok másolhatóak
+
+═════════════════════════════════════════════════════════════════════════════════
+
+GRATULÁLUNK! 🎉 
+Ha mindezzel végzel, a hálózat teljes mértékben konfigurálva és működik!
+
+Kérdések? Az útmutató minden lépésének van részletes magyarázata.
+
+═════════════════════════════════════════════════════════════════════════════════
