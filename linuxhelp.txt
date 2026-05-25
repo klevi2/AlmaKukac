@@ -1,0 +1,8 @@
+su
+sudo apt upgrade -y
+sudo apt update -y
+sudo apt install mc -y 
+sudo apt install apache2 -y
+cd /var/www/html 
+sudo systemctl status …..
+sudo systemctl start ------
